@@ -316,7 +316,7 @@ class IssueListOverview extends React.Component<Props, State> {
   };
 
   fetchMemberList() {
-    const projectIds = this.getGlobalSearchProjectIds().map(projectId =>
+    const projectIds = this.getGlobalSearchProjectIds()?.map(projectId =>
       String(projectId)
     );
 

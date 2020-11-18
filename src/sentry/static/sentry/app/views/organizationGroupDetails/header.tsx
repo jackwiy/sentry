@@ -23,6 +23,9 @@ import Badge from 'app/components/badge';
 import space from 'app/styles/space';
 import withApi from 'app/utils/withApi';
 import {getMessage} from 'app/utils/events';
+import {Group, Project} from 'app/types';
+import {Client} from 'app/api';
+import ExternalLink from 'app/components/links/externalLink';
 
 import GroupActions from './actions';
 import UnhandledTag, {TagAndMessageWrapper} from './unhandledTag';
@@ -38,27 +41,36 @@ const TAB = {
   SIMILAR_ISSUES: 'similar-issues',
 };
 
-class GroupHeader extends React.Component {
-  static propTypes = {
-    currentTab: PropTypes.string.isRequired,
-    baseUrl: PropTypes.string.isRequired,
-    group: SentryTypes.Group.isRequired,
-    project: SentryTypes.Project,
-    api: PropTypes.object,
-  };
+type Props = {
+  currentTab: string;
+  baseUrl: string;
+  group: Group;
+  project: Project;
+  api: Client;
+};
 
+type MemberList = NonNullable<
+  React.ComponentProps<typeof AssigneeSelector>['memberList']
+>;
+
+type State = {
+  memberList?: MemberList;
+};
+
+class GroupHeader extends React.Component<Props, State> {
   static contextTypes = {
     location: PropTypes.object,
     organization: SentryTypes.Organization,
   };
 
-  state = {memberList: null};
+  state: State = {};
 
   componentDidMount() {
     const {organization} = this.context;
-    const {project} = this.props.group;
+    const {group} = this.props;
+    const {project} = group;
 
-    fetchOrgMembers(this.props.api, organization.slug, project.id).then(memberList => {
+    fetchOrgMembers(this.props.api, organization.slug, [project.id]).then(memberList => {
       const users = memberList.map(member => member.user);
       this.setState({memberList: users});
     });
@@ -76,9 +88,11 @@ class GroupHeader extends React.Component {
     if (group.isBookmarked) {
       className += ' isBookmarked';
     }
+
     if (group.hasSeen) {
       className += ' hasSeen';
     }
+
     if (group.status === 'resolved') {
       className += ' isResolved';
     }
@@ -146,12 +160,12 @@ class GroupHeader extends React.Component {
                         )}
                         position="bottom"
                       >
-                        <a
+                        <ExternalLink
                           className="help-link"
                           href="https://docs.sentry.io/learn/releases/#resolving-issues-via-commits"
                         >
                           {t('Issue #')}
-                        </a>
+                        </ExternalLink>
                       </Tooltip>
                     </h6>
                     <ShortId

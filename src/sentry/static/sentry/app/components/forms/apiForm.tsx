@@ -23,6 +23,7 @@ export default class ApiForm extends Form<Props> {
 
   static propTypes = {
     ...Form.propTypes,
+    groupDataByDisabled: PropTypes.func,
     onSubmit: PropTypes.func,
     apiMethod: PropTypes.string.isRequired,
     apiEndpoint: PropTypes.string.isRequired,
@@ -40,6 +41,22 @@ export default class ApiForm extends Form<Props> {
     this.api.clear();
   }
 
+  groupDataByDisabled() {
+    // Return two hashes, one with data for live elements and another for disabled.
+    const [{data}, disabledData] = [{...this.state}, {}];
+    this.props.children &&
+      this.props.children.forEach(child => {
+        // Bit of a hack: loop over components named *Field to find disabled ones.
+        if (child.type && child.type.name && RegExp('Field$').test(child.type.name)) {
+          if (child.props.disabled) {
+            disabledData[child.key] = data[child.key];
+            delete data[child.key];
+          }
+        }
+      });
+    return [data, disabledData];
+  }
+
   onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -47,12 +64,13 @@ export default class ApiForm extends Form<Props> {
       return;
     }
 
-    const {data} = this.state;
+    const [data, disabledData] = this.groupDataByDisabled();
 
     this.props.onSubmit && this.props.onSubmit(data);
     this.setState(
       {
         state: FormState.SAVING,
+        data: {...this.state.data, ...disabledData},
       },
       () => {
         addLoadingMessage(this.props.submitLoadingMessage);
@@ -61,7 +79,7 @@ export default class ApiForm extends Form<Props> {
           data,
           success: result => {
             clearIndicators();
-            this.onSubmitSuccess(result);
+            this.onSubmitSuccess({...disabledData, ...(result || {})});
           },
           error: error => {
             addErrorMessage(this.props.submitErrorMessage);
